@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceFlow Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+</head>
+<body class="bg-slate-50 transition-colors duration-300">
+
+    <div id="pin-modal" class="fixed inset-0 bg-slate-900 flex items-center justify-center z-[100] hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full mx-4">
+            <div class="text-5xl mb-4">🔒</div>
+            <h2 class="text-2xl font-bold mb-2 text-slate-800" id="pin-title">Masukkan PIN</h2>
+            <input type="password" id="pin-input" maxlength="4" placeholder="••••" class="w-32 text-center text-3xl tracking-[0.5rem] p-2 border-b-2 border-indigo-500 outline-none mb-8 bg-transparent">
+            <button onclick="checkPIN()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg transition">Buka Aplikasi</button>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold text-indigo-600">FinanceFlow<span class="text-slate-400 font-light text-xl">Pro</span></h1>
+                <p id="current-date" class="text-slate-500 text-sm"></p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="toggleDarkMode()" id="dark-mode-toggle" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-700">🌙</button>
+                <button onclick="exportToCSV()" class="bg-green-50 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-100">Export CSV</button>
+                <button onclick="backupData()" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100">Backup JSON</button>
+                <button onclick="clearAll()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-100">Reset</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold mb-4 text-slate-700 text-lg">Tambah Transaksi</h3>
+                    <form id="finance-form" class="space-y-4">
+                        <input type="text" id="desc" placeholder="Keterangan (Makan, Gaji, dll)" class="input-field" required>
+                        
+                        <div class="space-y-1">
+                            <input type="number" id="amount" placeholder="Nominal (Contoh: 50000)" class="input-field" required>
+                            <p class="text-[10px] text-amber-600 font-medium">* Masukkan angka saja tanpa titik (.) atau koma (,)</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="type" class="input-field" onchange="toggleTargetSelection()">
+                                <option value="expense">Keluar</option>
+                                <option value="income">Masuk (Deposit)</option>
+                            </select>
+                            <select id="category" class="input-field"></select>
+                        </div>
+
+                        <div id="target-selection-container" class="hidden space-y-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Alokasikan ke Target?</label>
+                            <select id="target-allocation" class="input-field"></select>
+                        </div>
+
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">Simpan</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-700">🎯 Target Tabungan</h3>
+                        <button onclick="addNewGoal()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full font-bold">+ Tambah</button>
+                    </div>
+                    <div id="goals-container" class="space-y-4"></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold mb-4 text-slate-700 text-center">Analisis Tren 7 Hari</h3>
+                    <div class="h-[180px]">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="card-stat bg-indigo-600 text-white p-6 rounded-2xl shadow-lg">
+                        <span class="text-xs opacity-70 font-bold uppercase">Total Saldo</span>
+                        <h2 id="total-balance" class="text-2xl font-bold mt-1">Rp 0</h2>
+                    </div>
+                    <div class="card-stat bg-white border border-slate-200 p-6 rounded-2xl">
+                        <span class="text-xs text-slate-400 font-bold uppercase">Pemasukan</span>
+                        <h2 id="total-income" class="text-2xl font-bold text-green-600 mt-1">Rp 0</h2>
+                    </div>
+                    <div class="card-stat bg-white border border-slate-200 p-6 rounded-2xl">
+                        <span class="text-xs text-slate-400 font-bold uppercase">Pengeluaran</span>
+                        <h2 id="total-expense" class="text-2xl font-bold text-red-600 mt-1">Rp 0</h2>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4">
+                        <input type="text" id="search-input" onkeyup="updateUI()" placeholder="Cari histori..." class="p-2 border rounded-lg text-sm w-full md:w-64 outline-none focus:border-indigo-500">
+                        <div class="flex gap-1 bg-white p-1 rounded-lg border">
+                            <button onclick="setFilter('all')" class="filter-btn active">Semua</button>
+                            <button onclick="setFilter('income')" class="filter-btn">Masuk</button>
+                            <button onclick="setFilter('expense')" class="filter-btn">Keluar</button>
+                        </div>
+                    </div>
+                    <ul id="transaction-list" class="divide-y divide-slate-100 max-h-[500px] overflow-y-auto"></ul>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-12 py-6 border-t border-slate-200 text-center">
+            <p class="text-sm text-slate-500">
+                &copy; 2024 <span class="font-bold text-indigo-600">FinanceFlow Pro</span>. 
+                Developed with ❤️ by <button onclick="toggleDevModal()" class="font-bold hover:underline text-slate-700 italic">Divzz Dev</button>
+            </p>
+        </footer>
+    </div>
+
+    <div id="dev-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[110] hidden">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm w-full mx-4 relative">
+            <button onclick="toggleDevModal()" class="absolute top-4 right-4 text-slate-400">✕</button>
+            <div class="w-20 h-20 bg-indigo-100 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl">👨‍💻</div>
+            <h3 class="text-xl font-bold text-slate-800">Divzz Dev</h3>
+            <p class="text-indigo-600 font-medium text-sm mb-4">Programmer</p>
+            <p class="text-slate-500 text-sm mb-6">Aplikasi ini dibuat untuk membantu pengelolaan keuangan pribadi secara aman dan mandiri.</p>
+            <div class="flex justify-center gap-4">
+                <a href="https://github.com/divzz0011" class="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition">GitHub</a>
+                <a href="mailto:divzzxxx@gmail.com" class="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition">Email</a>
+                <a href="https://instagram.com/divzz_neverlouse" class="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition">Instagram</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
